@@ -1,0 +1,62 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+```{r}
+mycols <- as.character(read_xlsx(path = "CC_WU_Early_Daily_Pre-plant.xlsx", n_max = 1, skip = 1, col_names = FALSE ))
+data <- read_xlsx("CC_WU_Early_Daily_Pre-plant.xlsx", skip = 4, col_names = mycols)
+```
+
+```{r}
+averages <- data |> 
+  select(TIMESTAMP,ends_with("Avg"))
+```
+
+```{r}
+averages |> 
+  ggplot(aes(TIMESTAMP))+
+  #geom_point()+
+  geom_line(aes(y =VWC_NC_5cm_Avg), color = "red")+
+  geom_line(aes(y = VWC_NC_20cm_Avg), color = "blue")+
+  scale_x_datetime(date_breaks = "3 month", date_labels = "%m %y")
+```
+```{r}
+averages_long <- averages |>
+  dplyr::select(!(PTemp_C_Avg)) |> 
+  pivot_longer(
+    cols = -c(TIMESTAMP),
+    names_to = c("Variable", "Treatment", "Depth"),
+    names_pattern = "([^_]+)_([^_]+)_([^_]+)_Avg",
+    values_to = "Value"
+  ) |> 
+  janitor::clean_names() |> 
+  mutate(variable = factor(variable),
+         treatment = factor(treatment),
+         depth = factor(depth))
+
+averages_long |> 
+  group_by(treatment,variable) |> 
+  summarise(units = n_distinct(value))
+
+```
+
+```{r}
+averages_long |> 
+  filter(variable == "VWC", depth == "5cm") |> 
+  ggplot(aes(timestamp,value, color = treatment))+
+  #geom_point()+
+  geom_line()+
+  scale_x_datetime(date_breaks = "6 month", date_labels = "%m %y")+
+  labs(x = "Time (M/Y)",
+       y = "Volumetric Water Content (m3/m3)",
+       title = "Water content at 5cm depth across different treatments")+
+  theme(axis.text = element_text(size = 12))
+  #facet_wrap(~treatment)
+```
+
